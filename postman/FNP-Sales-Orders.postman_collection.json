@@ -1,0 +1,46 @@
+{
+  "info": {
+    "name": "Sales Order Management API",
+    "description": "API collection for the Sales Order Management assignment. Set the `baseUrl` collection variable to the deployed backend URL (e.g. https://sales-order-api.onrender.com) or http://localhost:3000 for local development.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" }
+  ],
+  "item": [
+    {
+      "name": "Create Order",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api", "orders"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customerName\": \"Aarav Mehta\",\n  \"productName\": \"Red Roses Bouquet\",\n  \"quantity\": 2,\n  \"totalAmount\": 1499.00\n}"
+        },
+        "description": "Creates a sales order, saves it in PostgreSQL and triggers a Firebase notification to all registered devices. `status` is optional (defaults to PENDING; one of PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED)."
+      }
+    },
+    {
+      "name": "Get All Orders",
+      "request": {
+        "method": "GET",
+        "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api", "orders"] },
+        "description": "Returns all orders sorted by creation date, newest first."
+      }
+    },
+    {
+      "name": "Register Device Token",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": { "raw": "{{baseUrl}}/api/devices/register", "host": ["{{baseUrl}}"], "path": ["api", "devices", "register"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"PASTE_FIREBASE_DEVICE_TOKEN_HERE\"\n}"
+        },
+        "description": "Registers a Firebase Cloud Messaging device token. The frontend calls this automatically after the browser grants notification permission."
+      }
+    }
+  ]
+}
