@@ -50,3 +50,9 @@ th { color: #64748b; font-weight: 600; font-size: 12px; text-transform: uppercas
 .status-shipped { background: #e0e7ff; color: #3730a3; }
 .status-delivered { background: #dcfce7; color: #166534; }
 .status-cancelled { background: #fee2e2; color: #991b1b; }
+.push-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.push-row .push-status { margin: 12px 0; }
+.enable-push {
+  border: none; border-radius: 6px; cursor: pointer;
+  background: #2563eb; color: #fff; font-size: 13px; padding: 5px 12px;
+}

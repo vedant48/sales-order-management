@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, Messaging } from 'firebase/messaging';
 
 const firebaseConfig = {
@@ -20,9 +20,11 @@ export function firebaseConfigured() {
 
 export async function setupMessaging(): Promise<string | null> {
   if (!firebaseConfigured()) return null;
-  const app = initializeApp(firebaseConfig);
-  messaging = getMessaging(app);
-  const permission = await Notification.requestPermission();
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  if (!messaging) messaging = getMessaging(app);
+  if (Notification.permission === 'denied') return null;
+  const permission =
+    Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
   if (permission !== 'granted') return null;
   const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
   const token = await getToken(messaging, {

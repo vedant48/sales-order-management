@@ -3,15 +3,26 @@ import { createOrder, getOrders, registerDevice, Order } from './api';
 import { firebaseConfigured, onForegroundMessage, setupMessaging } from './firebase';
 
 type LoadState = 'loading' | 'error' | 'ready';
+type PushState = 'loading' | 'enabled' | 'prompt' | 'denied' | 'unavailable' | 'error';
+
+const PUSH_TEXT: Record<PushState, string> = {
+  loading: 'Setting up notifications...',
+  enabled: 'Live notifications enabled - the list refreshes automatically on new orders.',
+  prompt: 'Notifications are off - enable them to get new-order alerts and auto-refresh.',
+  denied:
+    'Notifications are blocked by the browser. Allow them in the browser site settings, then tap Retry.',
+  unavailable: 'Push notifications unavailable (Firebase not configured or unsupported browser).',
+  error: 'Notification setup failed - tap Retry to try again.',
+};
 
 export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [pushStatus, setPushStatus] = useState('Setting up notifications...');
+  const [pushState, setPushState] = useState<PushState>('loading');
   const [submitting, setSubmitting] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
+  const pushListenerAdded = useRef(false);
 
   const loadOrders = useCallback(async () => {
     try {
@@ -29,21 +40,29 @@ export default function App() {
     loadOrders();
   }, [loadOrders]);
 
-  useEffect(() => {
+  const enableNotifications = useCallback(async () => {
     if (!firebaseConfigured()) {
-      setPushStatus('Push notifications unavailable (Firebase not configured or unsupported browser).');
+      setPushState('unavailable');
       return;
     }
-    let cancelled = false;
-    setupMessaging()
-      .then(async (token) => {
-        if (cancelled) return;
-        if (!token) {
-          setPushStatus('Notification permission not granted - list will not auto-refresh.');
-          return;
-        }
-        await registerDevice(token);
-        setPushStatus('Live notifications enabled - the list refreshes automatically on new orders.');
+    if (Notification.permission === 'denied') {
+      // Browsers do not allow re-prompting after a block; the user must
+      // re-enable permission in the browser's site settings.
+      setPushState('denied');
+      return;
+    }
+    setPushState('loading');
+    try {
+      const token = await setupMessaging();
+      if (!token) {
+        const perm = Notification.permission as NotificationPermission;
+        setPushState(perm === 'denied' ? 'denied' : 'prompt');
+        return;
+      }
+      await registerDevice(token);
+      setPushState('enabled');
+      if (!pushListenerAdded.current) {
+        pushListenerAdded.current = true;
         onForegroundMessage((payload) => {
           setNotice('New order received - refreshing list...');
           loadOrders().then(() => setTimeout(() => setNotice(''), 4000));
@@ -56,12 +75,16 @@ export default function App() {
               .catch(() => {});
           }
         });
-      })
-      .catch((err) => setPushStatus(`Notification setup failed: ${err?.message || err}`));
-    return () => {
-      cancelled = true;
-    };
+      }
+    } catch (err) {
+      console.error('Notification setup failed:', err);
+      setPushState('error');
+    }
   }, [loadOrders]);
+
+  useEffect(() => {
+    enableNotifications();
+  }, [enableNotifications]);
 
   async function onCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -96,12 +119,19 @@ export default function App() {
         </button>
       </header>
 
-      <p className="push-status">{pushStatus}</p>
+      <div className="push-row">
+        <p className="push-status">{PUSH_TEXT[pushState]}</p>
+        {(pushState === 'prompt' || pushState === 'error' || pushState === 'denied') && (
+          <button className="enable-push" onClick={enableNotifications}>
+            {pushState === 'prompt' ? 'Enable notifications' : 'Retry'}
+          </button>
+        )}
+      </div>
       {notice && <p className="notice">{notice}</p>}
 
       <section className="card">
         <h2>Create order</h2>
-        <form ref={formRef} onSubmit={onCreate} className="form">
+        <form onSubmit={onCreate} className="form">
           <input name="customerName" placeholder="Customer name" required maxLength={120} />
           <input name="productName" placeholder="Product name" required maxLength={160} />
           <input name="quantity" type="number" min={1} step={1} placeholder="Quantity" required />

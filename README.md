@@ -31,11 +31,19 @@ first, with ID, customer, product, quantity, total, status and creation time:
 
 <img src="docs/fcm-test-notification.jpg" alt="FCM test notification" width="320">
 
+**Permission prompt** - the browser asking for notification permission on a phone (Chrome):
+
+<img src="docs/fcm-permission-prompt.jpg" alt="Browser notification permission prompt" width="320">
+
 ## How the App Works (end to end)
 
 1. The React app loads and calls `GET /api/orders` to render the list.
 2. The app asks the browser for notification permission, gets an FCM device token and
-   registers it with `POST /api/devices/register`.
+   registers it with `POST /api/devices/register`. If the device is not registered, an
+   **Enable notifications** button appears under the status line - tapping it asks the
+   browser for permission and registers the device. Browsers do not allow re-prompting
+   after a block, so in that case the app says to allow notifications in the browser's
+   site settings and then tap Retry.
 3. Anyone creates an order with `POST /api/orders` (Postman, curl, or the built-in form).
 4. The backend validates the payload (class-validator DTOs), generates a UUID order ID
    and saves the order in PostgreSQL.
